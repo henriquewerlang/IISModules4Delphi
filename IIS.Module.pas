@@ -126,22 +126,6 @@ begin
   Result := RegisterModuleImplementation(pModuleInfo, @Callback);
 end;
 
-function HttpFilterProc(var pfc: THTTP_FILTER_CONTEXT; Notificationtype: DWORD; pvNotification: Pointer): DWORD;
-var
-  Filtro: PHTTP_FILTER_URL_MAP absolute pvNotification;
-
-begin
-  Filtro.cbPathBuff := Filtro.cbPathBuff;
-
-  Result := SF_STATUS_REQ_FINISHED;
-end;
-
-function GetFilterVersion(var pVer: THTTP_FILTER_VERSION): BOOL;
-begin
-  pVer.dwFlags := SF_NOTIFY_URL_MAP;
-  Result := True;
-end;
-
 { TIISModuleWebResponse }
 
 constructor TIISModuleWebResponse.Create(HTTPRequest: TIISModuleWebRequest);
