@@ -379,7 +379,7 @@ begin
   var Response := TIISModuleWebResponse.Create(Request);
 
   try
-    Result := HandleRequest(Request, Response);
+    Result := HandleRequest(Request, Response) or Response.Sent;
   finally
     Response.Free;
 
