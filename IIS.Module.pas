@@ -228,7 +228,7 @@ begin
   repeat
     ReadSize := AStream.Read(Buffer, Length(Buffer));
 
-    if (ReadSize > 0) and (FIISModule.WriteClient(Buffer, ReadSize) <> ReadSize) then
+    if (ReadSize > 0) and (FIISModule.WriteClient(Buffer, ReadSize) <> Cardinal(ReadSize)) then
       raise Exception.Create('Problemas no envio dos dados!');
   until ReadSize = 0;
 end;
@@ -341,7 +341,7 @@ end;
 
 function TIISModuleWebRequest.ReadClient(var Buffer; Count: Integer): Integer;
 begin
-
+  Result := 0;
 end;
 
 function TIISModuleWebRequest.ReadString(Count: Integer): String;
@@ -443,7 +443,7 @@ end;
 
 procedure TIISModule.SetHeader(Name: String; const Value: String);
 begin
-
+//  IIS.Module.SetHeader(FIISModule, );
 end;
 
 procedure TIISModule.SetIntegerVariable(Index: TServerIntegerVariable; const Value: Integer);
