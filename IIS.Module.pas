@@ -417,10 +417,13 @@ begin
   begin
     var ReturnValue := GetServerStringVariable(FIISModule, Index);
 
-    if Index in [ssvMethod] then
+    if Index = ssvMethod then
       FStringVariables[Index] := String(PAnsiChar(ReturnValue))
     else
       FStringVariables[Index] := String(PChar(ReturnValue));
+
+    if Index = ssvQueryString then
+      FStringVariables[Index] := FStringVariables[Index].Substring(1);
   end;
 
   Result := FStringVariables[Index];
