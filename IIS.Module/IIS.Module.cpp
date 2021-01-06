@@ -72,8 +72,11 @@ class IISModule : public CHttpModule
             {
                return Event->GetUrl();
             }
-            case ServerStringVariable::svProtocol:
             case ServerStringVariable::svQueryString:
+            {
+                return HTTPContext->GetRequest()->GetRawHttpRequest()->CookedUrl.pQueryString;
+            }
+            case ServerStringVariable::svProtocol:
             case ServerStringVariable::svPathInfo:
             case ServerStringVariable::svPathTranslated:
             case ServerStringVariable::svHTTPCacheControl:
