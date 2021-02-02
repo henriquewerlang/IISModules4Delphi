@@ -112,7 +112,9 @@ class IISModule : public CHttpModule
 
       void SetStatusCode(USHORT StatusCode, PCSTR Reason)
       {
-         HTTPContext->GetResponse()->SetStatus(StatusCode, Reason);
+          HTTPContext->GetResponse()->Clear();
+
+          HTTPContext->GetResponse()->SetStatus(StatusCode, Reason, 0, S_OK, nullptr, TRUE);
       }
 
       void WriteHeader(PCSTR HeaderName, PCSTR Value, USHORT ValueSize)
