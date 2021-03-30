@@ -108,10 +108,12 @@ var
   WebApplication: TIISModuleApplication;
 
 function GetServerStringVariable(IISModule: Pointer; Variable: TServerStringVariable): Pointer; stdcall; external 'IIS.Module.dll';
+function ReadHeader(Module: Pointer; HeaderName: LPCSTR; var ValueSize: USHORT): LPCSTR; stdcall; external 'IIS.Module.dll';
 function RegisterModuleImplementation(pModuleInfo: Pointer; Callback: Pointer): HRESULT; stdcall; external 'IIS.Module.dll';
 function WriteClient(Module: Pointer; var Buffer; Size: DWORD): DWORD; stdcall; external 'IIS.Module.dll';
 
 procedure SetStatusCode(Module: Pointer; StatusCode: USHORT; Reason: PUTF8Char); stdcall; external 'IIS.Module.dll';
+procedure WriteHeader(Module: Pointer; HeaderName, Value: LPCSTR; ValueSize: USHORT); stdcall; external 'IIS.Module.dll';
 
 function Callback(IISModule: Pointer): TRequestNotificationStatus; stdcall;
 begin
@@ -184,13 +186,17 @@ procedure TIISModuleWebResponse.SendResponse;
 begin
   FIISModule.SetStatusCode(StatusCode, StatusString(StatusCode));
 
-  FIISModule.Header['Location'] := Location;
   FIISModule.Header['Allow'] := Allow;
+  FIISModule.Header['Content-Encoding'] := ContentEncoding;
+  FIISModule.Header['Content-Type'] := ContentType;
+  FIISModule.Header['Content-Version'] := ContentVersion;
+  FIISModule.Header['Derived-From'] := DerivedFrom;
+  FIISModule.Header['Location'] := Location;
+  FIISModule.Header['Title'] := Title;
+  FIISModule.Header['WWW-Authenticate'] := FormatAuthenticate;
 
   for var A := 0 to Pred(Cookies.Count) do
     FIISModule.Header['Set-Cookie'] := Cookies[A].HeaderValue;
-
-  FIISModule.Header['Derived-From'] := DerivedFrom;
 
   if Expires > 0 then
     FIISModule.Header['Expires'] := Format(FormatDateTime(sDateFormat + ' "GMT"', Expires), [DayOfWeekStr(Expires), MonthStr(Expires)]);
@@ -198,15 +204,8 @@ begin
   if LastModified > 0 then
     FIISModule.Header['Last-Modified'] := Format(FormatDateTime(sDateFormat + ' "GMT"', LastModified), [DayOfWeekStr(LastModified), MonthStr(LastModified)]);
 
-  FIISModule.Header['Title'] := Title;
-  FIISModule.Header['WWW-Authenticate'] := FormatAuthenticate;
-
   for var A := 0 to Pred(CustomHeaders.Count) do
     FIISModule.Header[CustomHeaders.Names[A]] := CustomHeaders.ValueFromIndex[A];
-
-  FIISModule.Header['Content-Version'] := ContentVersion;
-  FIISModule.Header['Content-Encoding'] := ContentEncoding;
-  FIISModule.Header['Content-Type'] := ContentType;
 
   if Assigned(ContentStream) then
   begin
@@ -402,8 +401,15 @@ begin
 end;
 
 function TIISModule.GetHeader(Name: String): String;
-begin
+var
+  AnsiValue: LPCSTR;
 
+  HeadValueSize: USHORT;
+
+begin
+  AnsiValue := ReadHeader(FIISModule, PAnsiChar(AnsiString(Name)), HeadValueSize);
+
+  Result := String(Copy(AnsiValue, 1, HeadValueSize));
 end;
 
 function TIISModule.GetIntegerVariable(Index: TServerIntegerVariable): Integer;
@@ -446,7 +452,12 @@ end;
 
 procedure TIISModule.SetHeader(Name: String; const Value: String);
 begin
-//  IIS.Module.SetHeader(FIISModule, );
+  if not Value.IsEmpty then
+  begin
+    var AnsiValue := AnsiString(Value);
+
+    IIS.Module.WriteHeader(FIISModule, PAnsiChar(AnsiString(Name)), PAnsiChar(AnsiValue), Length(AnsiValue));
+  end;
 end;
 
 procedure TIISModule.SetIntegerVariable(Index: TServerIntegerVariable; const Value: Integer);

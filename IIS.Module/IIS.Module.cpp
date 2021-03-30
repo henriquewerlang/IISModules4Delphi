@@ -198,3 +198,8 @@ extern "C" __declspec(dllexport) const DWORD __stdcall WriteClient(IISModule * M
 
    return Size;
 }
+
+extern "C" __declspec(dllexport) const PCSTR __stdcall ReadHeader(IISModule * Module, PCSTR HeaderName, USHORT* ValueSize)
+{
+    return nullptr;
+}
