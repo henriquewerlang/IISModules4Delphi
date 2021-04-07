@@ -10,9 +10,9 @@ type
   TRequestNotificationStatus = (RQ_NOTIFICATION_CONTINUE, RQ_NOTIFICATION_PENDING, RQ_NOTIFICATION_FINISH_REQUEST);
   TServerDateVariable = (sdvDate, sdvExpires, sdvLastModified);
   TServerIntegerVariable = (sivContentLength);
-  TServerStringVariable = (ssvMethod, ssvProtocol, ssvURL, ssvQueryString, ssvPathInfo, ssvPathTranslated, ssvHTTPCacheControl, ssvHTTPDate, ssvHTTPAccept, ssvHTTPFrom, ssvHTTPHost, ssvHTTPIfModifiedSince, ssvHTTPReferer,
-    svHTTPUserAgent, ssvHTTPContentEncoding, ssvContentType, ssvContentLength, ssvHTTPContentVersion, ssvHTTPDerivedFrom, ssvHTTPExpires, ssvHTTPTitle, ssvRemoteAddress, ssvRemoteHost, ssvScriptName, ssvServerPort,
-    svContent, ssvHTTPConnection, ssvHTTPCookie, ssvHTTPAuthorization);
+  TServerStringVariable = (ssvMethod, ssvProtocol, ssvURL, ssvQueryString, ssvPathInfo, ssvPathTranslated, ssvHTTPCacheControl, ssvHTTPDate, ssvHTTPAccept, ssvHTTPFrom,
+    ssvHTTPHost, ssvHTTPIfModifiedSince, ssvHTTPReferer, svHTTPUserAgent, ssvHTTPContentEncoding, ssvContentType, ssvContentLength, ssvHTTPContentVersion, ssvHTTPDerivedFrom,
+    ssvHTTPExpires, ssvHTTPTitle, ssvRemoteAddress, ssvRemoteHost, ssvScriptName, ssvServerPort, svContent, ssvHTTPConnection, ssvHTTPCookie, ssvHTTPAuthorization);
 
   TIISModuleApplication = class(TWebApplication)
   public
@@ -314,7 +314,7 @@ end;
 
 function TIISModuleWebRequest.GetFieldByName(const Name: String): String;
 begin
-
+  Result := FIISModule.Header[Name];
 end;
 
 function TIISModuleWebRequest.GetIntegerVariable(Index: Integer): Integer;

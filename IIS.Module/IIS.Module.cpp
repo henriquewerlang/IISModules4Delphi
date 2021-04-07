@@ -60,6 +60,11 @@ class IISModule : public CHttpModule
          return CallBack(this);
       }
 
+      PCSTR GetRequestHeader(PCSTR HeaderName, USHORT* ValueSize)
+      {
+          return HTTPContext->GetRequest()->GetHeader(HeaderName, ValueSize);
+      }
+
       const void* GetServerVariable(ServerStringVariable Variable)
       {
          switch (Variable)
@@ -201,5 +206,5 @@ extern "C" __declspec(dllexport) const DWORD __stdcall WriteClient(IISModule * M
 
 extern "C" __declspec(dllexport) const PCSTR __stdcall ReadHeader(IISModule * Module, PCSTR HeaderName, USHORT* ValueSize)
 {
-    return nullptr;
+    return Module->GetRequestHeader(HeaderName, ValueSize);
 }
