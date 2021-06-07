@@ -2,15 +2,13 @@ unit IIS.Module;
 
 interface
 
-uses System.Classes, System.SysUtils, Winapi.Windows, Winapi.Isapi2, Web.WebBroker, Web.HTTPApp;
+uses System.Classes, System.SysUtils, System.Rtti, System.Generics.Collections, Winapi.Windows, Winapi.Isapi2, Web.WebBroker, Web.HTTPApp;
 
 type
   TIISModuleWebRequest = class;
 
   TRequestNotificationStatus = (RQ_NOTIFICATION_CONTINUE, RQ_NOTIFICATION_PENDING, RQ_NOTIFICATION_FINISH_REQUEST);
-  TServerDateVariable = (sdvDate, sdvExpires, sdvLastModified);
-  TServerIntegerVariable = (sivContentLength);
-  TServerStringVariable = (ssvMethod, ssvProtocol, ssvURL, ssvQueryString, ssvPathInfo, ssvPathTranslated, ssvHTTPCacheControl, ssvHTTPDate, ssvHTTPAccept, ssvHTTPFrom,
+  TServerVariable = (ssvMethod, ssvProtocol, ssvURL, ssvQueryString, ssvPathInfo, ssvPathTranslated, ssvHTTPCacheControl, ssvHTTPDate, ssvHTTPAccept, ssvHTTPFrom,
     ssvHTTPHost, ssvHTTPIfModifiedSince, ssvHTTPReferer, svHTTPUserAgent, ssvHTTPContentEncoding, ssvContentType, ssvContentLength, ssvHTTPContentVersion, ssvHTTPDerivedFrom,
     ssvHTTPExpires, ssvHTTPTitle, ssvRemoteAddress, ssvRemoteHost, ssvScriptName, ssvServerPort, svContent, ssvHTTPConnection, ssvHTTPCookie, ssvHTTPAuthorization);
 
@@ -22,30 +20,23 @@ type
   TIISModule = class
   private
     FIISModule: Pointer;
-    FDateVariables: array[TServerDateVariable] of TDateTime;
-    FIntegerVariables: array[TServerIntegerVariable] of Integer;
-    FStringVariables: array[TServerStringVariable] of String;
+    FServerVariables: array [TServerVariable] of String;
 
-    function GetDateVariable(Index: TServerDateVariable): TDateTime;
     function GetHeader(Name: String): String;
-    function GetIntegerVariable(Index: TServerIntegerVariable): Integer;
-    function GetStringVariable(Index: TServerStringVariable): String;
+    function GetServerVariable(Index: TServerVariable): String;
 
-    procedure SetDateVariable(Index: TServerDateVariable; const Value: TDateTime);
     procedure SetHeader(Name: String; const Value: String);
-    procedure SetStringVariable(Index: TServerStringVariable; const Value: String);
-    procedure SetIntegerVariable(Index: TServerIntegerVariable; const Value: Integer);
+    procedure SetServerVariable(Index: TServerVariable; const Value: String);
   public
     constructor Create(IISModule: Pointer);
 
+    function ReadClient(var Buffer; Count: Integer): Integer;
     function WriteClient(var Buffer; const Size: DWORD): DWORD;
 
     procedure SetStatusCode(StatusCode: Integer; Reason: String);
 
     property Header[Name: String]: String read GetHeader write SetHeader;
-    property DateVariable[Index: TServerDateVariable]: TDateTime read GetDateVariable write SetDateVariable;
-    property IntegerVariable[Index: TServerIntegerVariable]: Integer read GetIntegerVariable write SetIntegerVariable;
-    property StringVariable[Index: TServerStringVariable]: String read GetStringVariable write SetStringVariable;
+    property ServerVariable[Index: TServerVariable]: String read GetServerVariable write SetServerVariable;
   end;
 
   TIISModuleWebResponse = class(TWebResponse)
@@ -54,6 +45,9 @@ type
     FStatusCode: Integer;
     FSent: Boolean;
     FLocalContentStream: TStream;
+    FStringVariables: array[0..MAX_STRINGS - 1] of UTF8String;
+    FIntegerVariables: array[0..MAX_INTEGERS - 1] of Integer;
+    FDateVariables: array[0..MAX_DATETIMES - 1] of TDateTime;
   protected
     function GetContent: String; override;
     function GetDateVariable(Index: Integer): TDateTime; override;
@@ -81,6 +75,9 @@ type
   TIISModuleWebRequest = class(TWebRequest)
   private
     FIISModule: TIISModule;
+    FContent: TBytes;
+
+    procedure LoadContent;
   protected
     function GetDateVariable(Index: Integer): TDateTime; override;
     function GetIntegerVariable(Index: Integer): Integer; override;
@@ -107,7 +104,8 @@ implementation
 var
   WebApplication: TIISModuleApplication;
 
-function GetServerStringVariable(IISModule: Pointer; Variable: TServerStringVariable): Pointer; stdcall; external 'IIS.Module.dll';
+function GetServerVariable(IISModule: Pointer; Variable: TServerVariable): Pointer; stdcall; external 'IIS.Module.dll';
+function ReadContent(IISModule: Pointer; var Buffer; const BufferSize: DWORD; var BytesReaded: DWORD): HRESULT; safecall; stdcall; external 'IIS.Module.dll';
 function ReadHeader(Module: Pointer; HeaderName: LPCSTR; var ValueSize: USHORT): LPCSTR; stdcall; external 'IIS.Module.dll';
 function RegisterModuleImplementation(pModuleInfo: Pointer; Callback: Pointer): HRESULT; stdcall; external 'IIS.Module.dll';
 function WriteClient(Module: Pointer; var Buffer; Size: DWORD): DWORD; stdcall; external 'IIS.Module.dll';
@@ -143,19 +141,13 @@ begin
 end;
 
 function TIISModuleWebResponse.GetDateVariable(Index: Integer): TDateTime;
-var
-  IndexType: TServerDateVariable absolute Index;
-
 begin
-  Result := FIISModule.DateVariable[IndexType];
+  Result := FDateVariables[Index];
 end;
 
 function TIISModuleWebResponse.GetIntegerVariable(Index: Integer): Integer;
-var
-  IndexType: TServerIntegerVariable absolute Index;
-
 begin
-  Result := FIISModule.IntegerVariable[IndexType];
+  Result := FIntegerVariables[Index];
 end;
 
 function TIISModuleWebResponse.GetLogMessage: String;
@@ -169,11 +161,8 @@ begin
 end;
 
 function TIISModuleWebResponse.GetStringVariable(Index: Integer): String;
-var
-  IndexType: TServerStringVariable absolute Index;
-
 begin
-  Result := FIISModule.StringVariable[IndexType];
+  Result := String(FStringVariables[Index]);
 end;
 
 procedure TIISModuleWebResponse.SendRedirect(const URI: String);
@@ -219,7 +208,7 @@ end;
 
 procedure TIISModuleWebResponse.SendStream(AStream: TStream);
 var
-  Buffer: array[0..65534] of Byte;
+  Buffer: array[Word] of Byte;
 
   ReadSize: Integer;
 
@@ -257,16 +246,12 @@ end;
 
 procedure TIISModuleWebResponse.SetDateVariable(Index: Integer; const Value: TDateTime);
 begin
-  inherited;
-
+  FDateVariables[Index] := Value;
 end;
 
 procedure TIISModuleWebResponse.SetIntegerVariable(Index, Value: Integer);
-var
-  IndexType: TServerIntegerVariable absolute Index;
-
 begin
-  FIISModule.IntegerVariable[IndexType] := Value;
+  FIntegerVariables[Index] := Value;
 end;
 
 procedure TIISModuleWebResponse.SetLogMessage(const Value: String);
@@ -281,11 +266,8 @@ begin
 end;
 
 procedure TIISModuleWebResponse.SetStringVariable(Index: Integer; const Value: String);
-var
-  IndexType: TServerStringVariable absolute Index;
-
 begin
-  FIISModule.StringVariable[IndexType] := Value;
+  FStringVariables[Index] := UTF8String(Value);
 end;
 
 { TIISModuleWebRequest }
@@ -305,11 +287,11 @@ begin
 end;
 
 function TIISModuleWebRequest.GetDateVariable(Index: Integer): TDateTime;
-var
-  IndexType: TServerDateVariable absolute Index;
-
 begin
-  Result := FIISModule.DateVariable[IndexType];
+  if GetStringVariable(Index).IsEmpty then
+    Result := 0
+  else
+    Result := StrToDateTime(GetStringVariable(Index));
 end;
 
 function TIISModuleWebRequest.GetFieldByName(const Name: String): String;
@@ -318,34 +300,67 @@ begin
 end;
 
 function TIISModuleWebRequest.GetIntegerVariable(Index: Integer): Integer;
-var
-  IndexType: TServerIntegerVariable absolute Index;
-
 begin
-  Result := FIISModule.IntegerVariable[IndexType];
+  if GetStringVariable(Index).IsEmpty then
+    Result := 0
+  else
+    Result := GetStringVariable(Index).ToInteger;
 end;
 
 function TIISModuleWebRequest.GetRawContent: TBytes;
 begin
+  if not Assigned(FContent) then
+    LoadContent;
 
+  Result := FContent;
 end;
 
 function TIISModuleWebRequest.GetStringVariable(Index: Integer): String;
 var
-  IndexType: TServerStringVariable absolute Index;
+  ServerIndex: TServerVariable absolute Index;
 
 begin
-  Result := FIISModule.StringVariable[IndexType];
+  Result := FIISModule.ServerVariable[ServerIndex];
+end;
+
+procedure TIISModuleWebRequest.LoadContent;
+var
+  TotalToRead: Int64;
+
+begin
+  TotalToRead := 0;
+
+  SetLength(FContent, ContentLength);
+
+  repeat
+    var TotalReaded := ReadClient(FContent[TotalToRead], Length(FContent) - TotalToRead);
+
+    TotalToRead := TotalToRead + TotalReaded;
+  until TotalToRead = Length(FContent);
 end;
 
 function TIISModuleWebRequest.ReadClient(var Buffer; Count: Integer): Integer;
 begin
-  Result := 0;
+  Result := FIISModule.ReadClient(Buffer, Count);
 end;
 
 function TIISModuleWebRequest.ReadString(Count: Integer): String;
-begin
+var
+  Len: Integer;
 
+  LResult: TBytes;
+
+begin
+  SetLength(LResult, Count);
+
+  Len := ReadClient(LResult[0], Count);
+
+  if Len > 0 then
+    SetLength(LResult, Len)
+  else
+    SetLength(LResult, 0);
+
+  Result := DefaultCharSetEncoding.GetString(LResult);
 end;
 
 function TIISModuleWebRequest.TranslateURI(const URI: String): String;
@@ -395,11 +410,6 @@ begin
   FIISModule := IISModule;
 end;
 
-function TIISModule.GetDateVariable(Index: TServerDateVariable): TDateTime;
-begin
-  Result := FDateVariables[Index];
-end;
-
 function TIISModule.GetHeader(Name: String): String;
 var
   AnsiValue: LPCSTR;
@@ -412,37 +422,32 @@ begin
   Result := String(Copy(AnsiValue, 1, HeadValueSize));
 end;
 
-function TIISModule.GetIntegerVariable(Index: TServerIntegerVariable): Integer;
+function TIISModule.GetServerVariable(Index: TServerVariable): String;
 begin
-  Result := FIntegerVariables[Index];
-end;
-
-function TIISModule.GetStringVariable(Index: TServerStringVariable): String;
-begin
-  if FStringVariables[Index].IsEmpty then
+  if FServerVariables[Index].IsEmpty then
   begin
-    var ReturnValue := GetServerStringVariable(FIISModule, Index);
+    var ReturnValue := IIS.Module.GetServerVariable(FIISModule, Index);
 
-    if Index = ssvMethod then
-      FStringVariables[Index] := String(PAnsiChar(ReturnValue))
+    if Index in [ssvContentLength, ssvContentType, ssvMethod] then
+      FServerVariables[Index] := String(PAnsiChar(ReturnValue))
     else
-      FStringVariables[Index] := String(PChar(ReturnValue));
+      FServerVariables[Index] := String(PChar(ReturnValue));
 
     if Index = ssvQueryString then
-      FStringVariables[Index] := FStringVariables[Index].Substring(1);
+      FServerVariables[Index] := FServerVariables[Index].Substring(1);
   end;
 
-  Result := FStringVariables[Index];
+  Result := FServerVariables[Index];
 end;
 
-procedure TIISModule.SetDateVariable(Index: TServerDateVariable; const Value: TDateTime);
-begin
-  FDateVariables[Index] := Value;
-end;
+function TIISModule.ReadClient(var Buffer; Count: Integer): Integer;
+var
+  BytesReaded: DWORD;
 
-procedure TIISModule.SetStringVariable(Index: TServerStringVariable; const Value: String);
 begin
-  FStringVariables[Index] := Value;
+  ReadContent(FIISModule, Buffer, Count, BytesReaded);
+
+  Result := BytesReaded;
 end;
 
 function TIISModule.WriteClient(var Buffer; const Size: DWORD): DWORD;
@@ -460,9 +465,9 @@ begin
   end;
 end;
 
-procedure TIISModule.SetIntegerVariable(Index: TServerIntegerVariable; const Value: Integer);
+procedure TIISModule.SetServerVariable(Index: TServerVariable; const Value: String);
 begin
-  FIntegerVariables[Index] := Value;
+  FServerVariables[Index] := Value;
 end;
 
 procedure TIISModule.SetStatusCode(StatusCode: Integer; Reason: String);
