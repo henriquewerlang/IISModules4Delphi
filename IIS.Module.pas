@@ -8,9 +8,9 @@ type
   TIISModuleWebRequest = class;
 
   TRequestNotificationStatus = (RQ_NOTIFICATION_CONTINUE, RQ_NOTIFICATION_PENDING, RQ_NOTIFICATION_FINISH_REQUEST);
-  TServerVariable = (ssvMethod, ssvProtocol, ssvURL, ssvQueryString, ssvPathInfo, ssvPathTranslated, ssvHTTPCacheControl, ssvHTTPDate, ssvHTTPAccept, ssvHTTPFrom,
-    ssvHTTPHost, ssvHTTPIfModifiedSince, ssvHTTPReferer, svHTTPUserAgent, ssvHTTPContentEncoding, ssvContentType, ssvContentLength, ssvHTTPContentVersion, ssvHTTPDerivedFrom,
-    ssvHTTPExpires, ssvHTTPTitle, ssvRemoteAddress, ssvRemoteHost, ssvScriptName, ssvServerPort, svContent, ssvHTTPConnection, ssvHTTPCookie, ssvHTTPAuthorization);
+  TServerVariable = (ssvMethod, ssvProtocol, ssvURL, ssvQueryString, ssvPathInfo, ssvPathTranslated, ssvHTTPCacheControl, ssvHTTPDate, ssvHTTPAccept, ssvHTTPFrom, ssvHTTPHost,
+    ssvHTTPIfModifiedSince, ssvHTTPReferer, ssvHTTPUserAgent, ssvHTTPContentEncoding, ssvContentType, ssvContentLength, ssvHTTPContentVersion, ssvHTTPDerivedFrom, ssvHTTPExpires,
+    ssvHTTPTitle, ssvRemoteAddress, ssvRemoteHost, ssvScriptName, ssvServerPort, ssvNotDefined, ssvHTTPConnection, ssvHTTPCookie, ssvHTTPAuthorization);
 
   TIISModuleApplication = class(TWebApplication)
   public
@@ -428,7 +428,7 @@ begin
   begin
     var ReturnValue := IIS.Module.GetServerVariable(FIISModule, Index);
 
-    if Index in [ssvContentLength, ssvContentType, ssvMethod] then
+    if Index in [ssvContentLength, ssvContentType, ssvHTTPCookie, ssvMethod] then
       FServerVariables[Index] := String(PAnsiChar(ReturnValue))
     else
       FServerVariables[Index] := String(PChar(ReturnValue));

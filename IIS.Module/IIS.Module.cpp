@@ -7,34 +7,35 @@ typedef REQUEST_NOTIFICATION_STATUS(__stdcall* CallBackFunction)(IISModule*);
 
 enum class ServerStringVariable
 {
-   svMethod,
-   svProtocol,
-   svURL,
-   svQueryString,
-   svPathInfo,
-   svPathTranslated,
-   svHTTPCacheControl,
-   svHTTPDate,
-   svHTTPAccept,
-   svHTTPFrom,
-   svHTTPHost,
-   svHTTPIfModifiedSince,
-   svHTTPReferer,
-   svHTTPUserAgent,
-   svHTTPContentEncoding,
-   svContentType,
-   svContentLength,
-   svHTTPContentVersion,
-   svHTTPDerivedFrom,
-   svHTTPExpires,
-   svHTTPTitle,
-   svRemoteAddress,
-   svRemoteHost,
-   svScriptName,
-   svServerPort,
-   svHTTPConnection,
-   svHTTPCookie,
-   svHTTPAuthorization
+   ssvMethod,
+   ssvProtocol,
+   ssvURL,
+   ssvQueryString,
+   ssvPathInfo,
+   ssvPathTranslated,
+   ssvHTTPCacheControl,
+   ssvHTTPDate,
+   ssvHTTPAccept,
+   ssvHTTPFrom,
+   ssvHTTPHost,
+   ssvHTTPIfModifiedSince,
+   ssvHTTPReferer,
+   ssvHTTPUserAgent,
+   ssvHTTPContentEncoding,
+   ssvContentType,
+   ssvContentLength,
+   ssvHTTPContentVersion,
+   ssvHTTPDerivedFrom,
+   ssvHTTPExpires,
+   ssvHTTPTitle,
+   ssvRemoteAddress,
+   ssvRemoteHost,
+   ssvScriptName,
+   ssvServerPort,
+   ssvNotDefined,
+   ssvHTTPConnection,
+   ssvHTTPCookie,
+   ssvHTTPAuthorization
 };
 
 class IISModule : public CHttpModule
@@ -68,49 +69,51 @@ public:
    {
       switch (Variable)
       {
-      case ServerStringVariable::svMethod:
+      case ServerStringVariable::ssvMethod:
       {
          return HTTPContext->GetRequest()->GetHttpMethod();
       }
-      case ServerStringVariable::svURL:
+      case ServerStringVariable::ssvURL:
       {
          return Event->GetUrl();
       }
-      case ServerStringVariable::svQueryString:
+      case ServerStringVariable::ssvQueryString:
       {
          return HTTPContext->GetRequest()->GetRawHttpRequest()->CookedUrl.pQueryString;
       }
-      case ServerStringVariable::svContentLength:
+      case ServerStringVariable::ssvContentLength:
       {
          return HTTPContext->GetRequest()->GetHeader(HttpHeaderContentLength, nullptr);
       }
-      case ServerStringVariable::svContentType:
+      case ServerStringVariable::ssvContentType:
       {
          return HTTPContext->GetRequest()->GetHeader(HttpHeaderContentType, nullptr);
       }
-      case ServerStringVariable::svProtocol:
-      case ServerStringVariable::svPathInfo:
-      case ServerStringVariable::svPathTranslated:
-      case ServerStringVariable::svHTTPCacheControl:
-      case ServerStringVariable::svHTTPDate:
-      case ServerStringVariable::svHTTPAccept:
-      case ServerStringVariable::svHTTPFrom:
-      case ServerStringVariable::svHTTPHost:
-      case ServerStringVariable::svHTTPIfModifiedSince:
-      case ServerStringVariable::svHTTPReferer:
-      case ServerStringVariable::svHTTPUserAgent:
-      case ServerStringVariable::svHTTPContentVersion:
-      case ServerStringVariable::svHTTPDerivedFrom:
-      case ServerStringVariable::svHTTPExpires:
-      case ServerStringVariable::svHTTPTitle:
-      case ServerStringVariable::svHTTPContentEncoding:
-      case ServerStringVariable::svRemoteAddress:
-      case ServerStringVariable::svRemoteHost:
-      case ServerStringVariable::svScriptName:
-      case ServerStringVariable::svServerPort:
-      case ServerStringVariable::svHTTPConnection:
-      case ServerStringVariable::svHTTPCookie:
-      case ServerStringVariable::svHTTPAuthorization:
+      case ServerStringVariable::ssvHTTPCookie:
+      {
+         return HTTPContext->GetRequest()->GetHeader(HttpHeaderCookie, nullptr);
+      }
+      case ServerStringVariable::ssvProtocol:
+      case ServerStringVariable::ssvPathInfo:
+      case ServerStringVariable::ssvPathTranslated:
+      case ServerStringVariable::ssvHTTPCacheControl:
+      case ServerStringVariable::ssvHTTPDate:
+      case ServerStringVariable::ssvHTTPAccept:
+      case ServerStringVariable::ssvHTTPFrom:
+      case ServerStringVariable::ssvHTTPHost:
+      case ServerStringVariable::ssvHTTPIfModifiedSince:
+      case ServerStringVariable::ssvHTTPReferer:
+      case ServerStringVariable::ssvHTTPContentVersion:
+      case ServerStringVariable::ssvHTTPDerivedFrom:
+      case ServerStringVariable::ssvHTTPExpires:
+      case ServerStringVariable::ssvHTTPTitle:
+      case ServerStringVariable::ssvHTTPContentEncoding:
+      case ServerStringVariable::ssvRemoteAddress:
+      case ServerStringVariable::ssvRemoteHost:
+      case ServerStringVariable::ssvScriptName:
+      case ServerStringVariable::ssvServerPort:
+      case ServerStringVariable::ssvHTTPConnection:
+      case ServerStringVariable::ssvHTTPAuthorization:
       {
          return nullptr;
       }
