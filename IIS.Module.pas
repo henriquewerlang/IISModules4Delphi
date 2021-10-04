@@ -46,19 +46,19 @@ type
     FSent: Boolean;
     FLocalContentStream: TStream;
     FStringVariables: array[0..MAX_STRINGS - 1] of UTF8String;
-    FIntegerVariables: array[0..MAX_INTEGERS - 1] of Integer;
+    FIntegerVariables: array[0..MAX_INTEGERS - 1] of Int64;
     FDateVariables: array[0..MAX_DATETIMES - 1] of TDateTime;
   protected
     function GetContent: String; override;
     function GetDateVariable(Index: Integer): TDateTime; override;
-    function GetIntegerVariable(Index: Integer): Integer; override;
+    function GetIntegerVariable(Index: Integer): Int64; override;
     function GetLogMessage: String; override;
     function GetStatusCode: Integer; override;
     function GetStringVariable(Index: Integer): String; override;
 
     procedure SetContent(const Value: String); override;
     procedure SetDateVariable(Index: Integer; const Value: TDateTime); override;
-    procedure SetIntegerVariable(Index: Integer; Value: Integer); override;
+    procedure SetIntegerVariable(Index: Integer; Value: Int64); override;
     procedure SetLogMessage(const Value: String); override;
     procedure SetStatusCode(Value: Integer); override;
     procedure SetStringVariable(Index: Integer; const Value: String); override;
@@ -80,7 +80,7 @@ type
     procedure LoadContent;
   protected
     function GetDateVariable(Index: Integer): TDateTime; override;
-    function GetIntegerVariable(Index: Integer): Integer; override;
+    function GetIntegerVariable(Index: Integer): Int64; override;
     function GetRawContent: TBytes; override;
     function GetStringVariable(Index: Integer): String; override;
   public
@@ -145,7 +145,7 @@ begin
   Result := FDateVariables[Index];
 end;
 
-function TIISModuleWebResponse.GetIntegerVariable(Index: Integer): Integer;
+function TIISModuleWebResponse.GetIntegerVariable(Index: Integer): Int64;
 begin
   Result := FIntegerVariables[Index];
 end;
@@ -249,7 +249,7 @@ begin
   FDateVariables[Index] := Value;
 end;
 
-procedure TIISModuleWebResponse.SetIntegerVariable(Index, Value: Integer);
+procedure TIISModuleWebResponse.SetIntegerVariable(Index: Integer; Value: Int64);
 begin
   FIntegerVariables[Index] := Value;
 end;
@@ -299,7 +299,7 @@ begin
   Result := FIISModule.Header[Name];
 end;
 
-function TIISModuleWebRequest.GetIntegerVariable(Index: Integer): Integer;
+function TIISModuleWebRequest.GetIntegerVariable(Index: Integer): Int64;
 begin
   if GetStringVariable(Index).IsEmpty then
     Result := 0
