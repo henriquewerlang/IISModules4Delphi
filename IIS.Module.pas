@@ -7,6 +7,12 @@ uses System.Classes, System.SysUtils, System.Rtti, System.Generics.Collections, 
 type
   TIISModuleWebRequest = class;
 
+{$IF CompilerVersion >= 35}
+  TIntegerVariable = Int64;
+{$ELSE}
+  TIntegerVariable = Integer;
+{$ENDIF}
+
   TRequestNotificationStatus = (RQ_NOTIFICATION_CONTINUE, RQ_NOTIFICATION_PENDING, RQ_NOTIFICATION_FINISH_REQUEST);
   TServerVariable = (ssvMethod, ssvProtocol, ssvURL, ssvQueryString, ssvPathInfo, ssvPathTranslated, ssvHTTPCacheControl, ssvHTTPDate, ssvHTTPAccept, ssvHTTPFrom, ssvHTTPHost,
     ssvHTTPIfModifiedSince, ssvHTTPReferer, ssvHTTPUserAgent, ssvHTTPContentEncoding, ssvContentType, ssvContentLength, ssvHTTPContentVersion, ssvHTTPDerivedFrom, ssvHTTPExpires,
@@ -46,19 +52,19 @@ type
     FSent: Boolean;
     FLocalContentStream: TStream;
     FStringVariables: array[0..MAX_STRINGS - 1] of UTF8String;
-    FIntegerVariables: array[0..MAX_INTEGERS - 1] of Int64;
+    FIntegerVariables: array[0..MAX_INTEGERS - 1] of TIntegerVariable;
     FDateVariables: array[0..MAX_DATETIMES - 1] of TDateTime;
   protected
     function GetContent: String; override;
     function GetDateVariable(Index: Integer): TDateTime; override;
-    function GetIntegerVariable(Index: Integer): Int64; override;
+    function GetIntegerVariable(Index: Integer): TIntegerVariable; override;
     function GetLogMessage: String; override;
     function GetStatusCode: Integer; override;
     function GetStringVariable(Index: Integer): String; override;
 
     procedure SetContent(const Value: String); override;
     procedure SetDateVariable(Index: Integer; const Value: TDateTime); override;
-    procedure SetIntegerVariable(Index: Integer; Value: Int64); override;
+    procedure SetIntegerVariable(Index: Integer; Value: TIntegerVariable); override;
     procedure SetLogMessage(const Value: String); override;
     procedure SetStatusCode(Value: Integer); override;
     procedure SetStringVariable(Index: Integer; const Value: String); override;
@@ -80,7 +86,7 @@ type
     procedure LoadContent;
   protected
     function GetDateVariable(Index: Integer): TDateTime; override;
-    function GetIntegerVariable(Index: Integer): Int64; override;
+    function GetIntegerVariable(Index: Integer): TIntegerVariable; override;
     function GetRawContent: TBytes; override;
     function GetStringVariable(Index: Integer): String; override;
   public
@@ -145,7 +151,7 @@ begin
   Result := FDateVariables[Index];
 end;
 
-function TIISModuleWebResponse.GetIntegerVariable(Index: Integer): Int64;
+function TIISModuleWebResponse.GetIntegerVariable(Index: Integer): TIntegerVariable;
 begin
   Result := FIntegerVariables[Index];
 end;
@@ -249,7 +255,7 @@ begin
   FDateVariables[Index] := Value;
 end;
 
-procedure TIISModuleWebResponse.SetIntegerVariable(Index: Integer; Value: Int64);
+procedure TIISModuleWebResponse.SetIntegerVariable(Index: Integer; Value: TIntegerVariable);
 begin
   FIntegerVariables[Index] := Value;
 end;
@@ -299,7 +305,7 @@ begin
   Result := FIISModule.Header[Name];
 end;
 
-function TIISModuleWebRequest.GetIntegerVariable(Index: Integer): Int64;
+function TIISModuleWebRequest.GetIntegerVariable(Index: Integer): TIntegerVariable;
 begin
   if GetStringVariable(Index).IsEmpty then
     Result := 0
