@@ -105,6 +105,9 @@ type
 
 function RegisterModule(dwServerVersion: DWORD; pModuleInfo, pGlobalInfo: Pointer): HRESULT; stdcall;
 
+exports
+  RegisterModule;
+
 implementation
 
 var
