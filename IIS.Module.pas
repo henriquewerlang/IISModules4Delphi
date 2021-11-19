@@ -20,7 +20,12 @@ type
 
   TIISModuleApplication = class(TWebApplication)
   public
+    constructor Create(AOwner: TComponent); override;
+
     function ExecuteRequest(IISModule: Pointer): Boolean;
+    function IISModuleHandleServerException(IISModule: Pointer; E: Exception): Boolean;
+
+    procedure IISModuleHandleException(Sender: TObject);
   end;
 
   TIISModule = class
@@ -109,6 +114,8 @@ exports
   RegisterModule;
 
 implementation
+
+uses Winapi.WinInet;
 
 var
   WebApplication: TIISModuleApplication;
@@ -396,18 +403,57 @@ end;
 
 { TIISModuleApplication }
 
+constructor TIISModuleApplication.Create(AOwner: TComponent);
+begin
+  inherited;
+
+  System.Classes.ApplicationHandleException := IISModuleHandleException;
+end;
+
 function TIISModuleApplication.ExecuteRequest(IISModule: Pointer): Boolean;
 begin
   var Request := TIISModuleWebRequest.Create(IISModule);
   var Response := TIISModuleWebResponse.Create(Request);
 
   try
-    Result := HandleRequest(Request, Response) or Response.Sent;
+    try
+      Result := HandleRequest(Request, Response) or Response.Sent;
+    except
+      on E: Exception do
+        Result := IISModuleHandleServerException(IISModule, E);
+    end;
   finally
     Response.Free;
 
     Request.Free;
   end;
+end;
+
+procedure TIISModuleApplication.IISModuleHandleException(Sender: TObject);
+var
+  Handled: Boolean;
+  Intf: IWebExceptionHandler;
+begin
+  Handled := False;
+
+  if ExceptObject is Exception and Supports(Sender, IWebExceptionHandler, Intf) then
+    try
+      Intf.HandleException(Exception(ExceptObject), Handled);
+    except
+      Handled := False;
+    end;
+
+  if not Handled then
+    System.SysUtils.ShowException(ExceptObject, ExceptAddr);
+end;
+
+function TIISModuleApplication.IISModuleHandleServerException(IISModule: Pointer; E: Exception): Boolean;
+begin
+  var Module := TIISModule.Create(IISModule);
+
+  Module.SetStatusCode(HTTP_STATUS_SERVER_ERROR, E.Message);
+
+  Result := True;
 end;
 
 { TIISModule }
