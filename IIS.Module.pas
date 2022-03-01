@@ -42,7 +42,7 @@ type
     constructor Create(IISModule: Pointer);
 
     function ReadClient(var Buffer; Count: Integer): Integer;
-    function WriteClient(var Buffer; const Size: DWORD): DWORD;
+    function WriteClient(var Buffer; const Size: DWORD; const MoreChunkToSend: Boolean): DWORD;
 
     procedure SetStatusCode(StatusCode: Integer; Reason: String);
 
@@ -124,7 +124,7 @@ function GetServerVariable(IISModule: Pointer; Variable: TServerVariable): Point
 function ReadContent(IISModule: Pointer; var Buffer; const BufferSize: DWORD; var BytesReaded: DWORD): HRESULT; safecall; stdcall; external 'IIS.Module.dll';
 function ReadHeader(Module: Pointer; HeaderName: LPCSTR; var ValueSize: USHORT): LPCSTR; stdcall; external 'IIS.Module.dll';
 function RegisterModuleImplementation(pModuleInfo: Pointer; Callback: Pointer): HRESULT; stdcall; external 'IIS.Module.dll';
-function WriteClient(Module: Pointer; var Buffer; Size: DWORD): DWORD; stdcall; external 'IIS.Module.dll';
+function WriteClient(Module: Pointer; var Buffer; Size: DWORD; const MoreChunkToSend: Boolean): DWORD; stdcall; external 'IIS.Module.dll';
 
 procedure SetStatusCode(Module: Pointer; StatusCode: USHORT; Reason: PUTF8Char); stdcall; external 'IIS.Module.dll';
 procedure WriteHeader(Module: Pointer; HeaderName, Value: LPCSTR; ValueSize: USHORT); stdcall; external 'IIS.Module.dll';
@@ -223,18 +223,29 @@ begin
 end;
 
 procedure TIISModuleWebResponse.SendStream(AStream: TStream);
+const
+  MAX_BUFFER_SIZE = 65535;
+
 var
   Buffer: array[Word] of Byte;
+
+  ChunkCount: Word;
 
   ReadSize: Integer;
 
 begin
-  repeat
-    ReadSize := AStream.Read(Buffer, Length(Buffer));
+  ChunkCount := AStream.Size div MAX_BUFFER_SIZE;
 
-    if (ReadSize > 0) and (FIISModule.WriteClient(Buffer, ReadSize) <> Cardinal(ReadSize)) then
+  if AStream.Size mod MAX_BUFFER_SIZE > 0 then
+    Inc(ChunkCount);
+
+  for var A := 1 to ChunkCount do
+  begin
+    ReadSize := AStream.Read(Buffer, MAX_BUFFER_SIZE);
+
+    if FIISModule.WriteClient(Buffer, ReadSize, A < ChunkCount) <> Cardinal(ReadSize) then
       raise Exception.Create('Problemas no envio dos dados!');
-  until ReadSize = 0;
+  end;
 end;
 
 function TIISModuleWebResponse.Sent: Boolean;
@@ -386,7 +397,7 @@ end;
 
 function TIISModuleWebRequest.WriteClient(var Buffer; Count: Integer): Integer;
 begin
-  Result := FIISModule.WriteClient(Buffer, Count);
+  Result := FIISModule.WriteClient(Buffer, Count, False);
 end;
 
 function TIISModuleWebRequest.WriteHeaders(StatusCode: Integer; const ReasonString, Headers: String): Boolean;
@@ -505,9 +516,9 @@ begin
   Result := BytesReaded;
 end;
 
-function TIISModule.WriteClient(var Buffer; const Size: DWORD): DWORD;
+function TIISModule.WriteClient(var Buffer; const Size: DWORD; const MoreChunkToSend: Boolean): DWORD;
 begin
-  Result := IIS.Module.WriteClient(FIISModule, Buffer, Size);
+  Result := IIS.Module.WriteClient(FIISModule, Buffer, Size, MoreChunkToSend);
 end;
 
 procedure TIISModule.SetHeader(Name: String; const Value: String);

@@ -143,7 +143,7 @@ public:
       HTTPContext->GetResponse()->SetHeader(HeaderName, Value, ValueSize, false);
    }
 
-   void WriteClient(void* Buffer, DWORD* Size)
+   void WriteClient(void* Buffer, DWORD* Size, bool MoreChunkToSend)
    {
       BOOL Completed;
       HTTP_DATA_CHUNK Chunk;
@@ -151,7 +151,7 @@ public:
       Chunk.FromMemory.pBuffer = Buffer;
       Chunk.FromMemory.BufferLength = *Size;
 
-      auto Result = HTTPContext->GetResponse()->WriteEntityChunks(&Chunk, 1, false, false, Size, &Completed);
+      auto Result = HTTPContext->GetResponse()->WriteEntityChunks(&Chunk, 1, false, MoreChunkToSend, Size, &Completed);
 
       *Size = Chunk.FromMemory.BufferLength;
 
@@ -213,9 +213,9 @@ extern "C" __declspec(dllexport) const void* __stdcall GetServerVariable(IISModu
    return Module->GetServerVariable(Variable);
 }
 
-extern "C" __declspec(dllexport) const DWORD __stdcall WriteClient(IISModule * Module, void* Buffer, DWORD Size)
+extern "C" __declspec(dllexport) const DWORD __stdcall WriteClient(IISModule * Module, void* Buffer, DWORD Size, bool MoreChunkToSend)
 {
-   Module->WriteClient(Buffer, &Size);
+   Module->WriteClient(Buffer, &Size, MoreChunkToSend);
 
    return Size;
 }
