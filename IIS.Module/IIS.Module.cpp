@@ -143,20 +143,23 @@ public:
       HTTPContext->GetResponse()->SetHeader(HeaderName, Value, ValueSize, false);
    }
 
-   void WriteClient(void* Buffer, DWORD* Size, bool MoreChunkToSend)
+   void AppendEntityChunk(void *Buffer, DWORD Size)
    {
-      BOOL Completed;
+      BOOL Completed = 0;
       HTTP_DATA_CHUNK Chunk;
       Chunk.DataChunkType = HttpDataChunkFromMemory;
       Chunk.FromMemory.pBuffer = Buffer;
-      Chunk.FromMemory.BufferLength = *Size;
+      Chunk.FromMemory.BufferLength = Size;
 
-      auto Result = HTTPContext->GetResponse()->WriteEntityChunks(&Chunk, 1, false, MoreChunkToSend, Size, &Completed);
+      HTTPContext->GetResponse()->WriteEntityChunks(&Chunk, 1, false, true, &Size, &Completed);
+   }
 
-      *Size = Chunk.FromMemory.BufferLength;
+   void Flush()
+   {
+      DWORD Size;
+      BOOL Completed;
 
-      if (Result != S_OK)
-         Result = S_OK;
+      HTTPContext->GetResponse()->Flush(false, false, &Size, &Completed);
    }
 };
 
@@ -213,11 +216,14 @@ extern "C" __declspec(dllexport) const void* __stdcall GetServerVariable(IISModu
    return Module->GetServerVariable(Variable);
 }
 
-extern "C" __declspec(dllexport) const DWORD __stdcall WriteClient(IISModule * Module, void* Buffer, DWORD Size, bool MoreChunkToSend)
+extern "C" __declspec(dllexport) const void __stdcall AppendEntityChunk(IISModule * Module, void* Buffer, DWORD Size)
 {
-   Module->WriteClient(Buffer, &Size, MoreChunkToSend);
+   Module->AppendEntityChunk(Buffer, Size);
+}
 
-   return Size;
+extern "C" __declspec(dllexport) const void __stdcall Flush(IISModule *Module)
+{
+   Module->Flush();
 }
 
 extern "C" __declspec(dllexport) const HRESULT __stdcall ReadContent(IISModule * Module, void* Buffer, DWORD BufferSize, DWORD* BytesReaded)
@@ -228,4 +234,13 @@ extern "C" __declspec(dllexport) const HRESULT __stdcall ReadContent(IISModule *
 extern "C" __declspec(dllexport) const PCSTR __stdcall ReadHeader(IISModule * Module, PCSTR HeaderName, USHORT* ValueSize)
 {
    return Module->GetRequestHeader(HeaderName, ValueSize);
+}
+
+extern "C" __declspec(dllexport) const DWORD __stdcall WriteClient(IISModule * Module, void* Buffer, DWORD Size, bool MoreChunkToSend)
+{
+   Module->AppendEntityChunk(Buffer, Size);
+
+   Module->Flush();
+
+   return Size;
 }

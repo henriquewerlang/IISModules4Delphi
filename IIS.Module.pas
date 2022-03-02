@@ -33,21 +33,22 @@ type
     FIISModule: Pointer;
     FServerVariables: array [TServerVariable] of String;
 
-    function GetHeader(Name: String): String;
-    function GetServerVariable(Index: TServerVariable): String;
+    function GetHeader(const Name: String): String;
+    function GetServerVariable(const Index: TServerVariable): String;
 
-    procedure SetHeader(Name: String; const Value: String);
-    procedure SetServerVariable(Index: TServerVariable; const Value: String);
+    procedure SetHeader(const Name, Value: String);
+    procedure SetServerVariable(const Index: TServerVariable; const Value: String);
   public
     constructor Create(IISModule: Pointer);
 
-    function ReadClient(var Buffer; Count: Integer): Integer;
-    function WriteClient(var Buffer; const Size: DWORD; const MoreChunkToSend: Boolean): DWORD;
+    function ReadClient(var Buffer; const Count: Integer): Integer;
 
-    procedure SetStatusCode(StatusCode: Integer; Reason: String);
+    procedure AppendEntityChunk(var Buffer; const Size: DWORD);
+    procedure Flush;
+    procedure SetStatusCode(const StatusCode: Integer; const Reason: String);
 
-    property Header[Name: String]: String read GetHeader write SetHeader;
-    property ServerVariable[Index: TServerVariable]: String read GetServerVariable write SetServerVariable;
+    property Header[const Name: String]: String read GetHeader write SetHeader;
+    property ServerVariable[const Index: TServerVariable]: String read GetServerVariable write SetServerVariable;
   end;
 
   TIISModuleWebResponse = class(TWebResponse)
@@ -115,7 +116,7 @@ exports
 
 implementation
 
-uses Winapi.WinInet;
+uses System.Math, Winapi.WinInet;
 
 var
   WebApplication: TIISModuleApplication;
@@ -124,8 +125,9 @@ function GetServerVariable(IISModule: Pointer; Variable: TServerVariable): Point
 function ReadContent(IISModule: Pointer; var Buffer; const BufferSize: DWORD; var BytesReaded: DWORD): HRESULT; safecall; stdcall; external 'IIS.Module.dll';
 function ReadHeader(Module: Pointer; HeaderName: LPCSTR; var ValueSize: USHORT): LPCSTR; stdcall; external 'IIS.Module.dll';
 function RegisterModuleImplementation(pModuleInfo: Pointer; Callback: Pointer): HRESULT; stdcall; external 'IIS.Module.dll';
-function WriteClient(Module: Pointer; var Buffer; Size: DWORD; const MoreChunkToSend: Boolean): DWORD; stdcall; external 'IIS.Module.dll';
 
+procedure AppendEntityChunk(Module: Pointer; var Buffer; Size: DWORD); stdcall; external 'IIS.Module.dll';
+procedure Flush(Module: Pointer); stdcall; external 'IIS.Module.dll';
 procedure SetStatusCode(Module: Pointer; StatusCode: USHORT; Reason: PUTF8Char); stdcall; external 'IIS.Module.dll';
 procedure WriteHeader(Module: Pointer; HeaderName, Value: LPCSTR; ValueSize: USHORT); stdcall; external 'IIS.Module.dll';
 
@@ -219,33 +221,26 @@ begin
     SendStream(ContentStream);
   end;
 
+  FIISModule.Flush;
+
   FSent := True;
 end;
 
 procedure TIISModuleWebResponse.SendStream(AStream: TStream);
-const
-  MAX_BUFFER_SIZE = 65535;
-
 var
-  Buffer: array[Word] of Byte;
-
-  ChunkCount: Word;
-
   ReadSize: Integer;
 
+  Buffer: array[0..4095] of Byte;
+
 begin
-  ChunkCount := AStream.Size div MAX_BUFFER_SIZE;
+  var BufferSize := Length(Buffer);
 
-  if AStream.Size mod MAX_BUFFER_SIZE > 0 then
-    Inc(ChunkCount);
+  repeat
+    ReadSize := AStream.Read(Buffer, BufferSize);
 
-  for var A := 1 to ChunkCount do
-  begin
-    ReadSize := AStream.Read(Buffer, MAX_BUFFER_SIZE);
-
-    if FIISModule.WriteClient(Buffer, ReadSize, A < ChunkCount) <> Cardinal(ReadSize) then
-      raise Exception.Create('Problemas no envio dos dados!');
-  end;
+    if ReadSize > 0 then
+      FIISModule.AppendEntityChunk(Buffer, ReadSize);
+  until ReadSize < BufferSize;
 end;
 
 function TIISModuleWebResponse.Sent: Boolean;
@@ -397,7 +392,9 @@ end;
 
 function TIISModuleWebRequest.WriteClient(var Buffer; Count: Integer): Integer;
 begin
-  Result := FIISModule.WriteClient(Buffer, Count, False);
+  FIISModule.AppendEntityChunk(Buffer, Count);
+
+  Result := Count;
 end;
 
 function TIISModuleWebRequest.WriteHeaders(StatusCode: Integer; const ReasonString, Headers: String): Boolean;
@@ -407,9 +404,7 @@ end;
 
 function TIISModuleWebRequest.WriteString(const AString: String): Boolean;
 begin
-  Result := True;
-
-  WriteClient(Pointer(AString)^, AString.Length * 2);
+  raise Exception.Create('Não implementado!');
 end;
 
 { TIISModuleApplication }
@@ -469,6 +464,17 @@ end;
 
 { TIISModule }
 
+procedure TIISModule.AppendEntityChunk(var Buffer; const Size: DWORD);
+const
+  MAX_CHUNCK_BUFFER_SIZE = 65535;
+
+begin
+  if Size > MAX_CHUNCK_BUFFER_SIZE then
+    raise Exception.Create('Você não pode adicionar um buffer maior que 65535 bytes');
+
+  IIS.Module.AppendEntityChunk(FIISModule, Buffer, Size);
+end;
+
 constructor TIISModule.Create(IISModule: Pointer);
 begin
   inherited Create;
@@ -476,7 +482,12 @@ begin
   FIISModule := IISModule;
 end;
 
-function TIISModule.GetHeader(Name: String): String;
+procedure TIISModule.Flush;
+begin
+  IIS.Module.Flush(FIISModule);
+end;
+
+function TIISModule.GetHeader(const Name: String): String;
 var
   AnsiValue: LPCSTR;
 
@@ -488,7 +499,7 @@ begin
   Result := String(Copy(AnsiValue, 1, HeadValueSize));
 end;
 
-function TIISModule.GetServerVariable(Index: TServerVariable): String;
+function TIISModule.GetServerVariable(const Index: TServerVariable): String;
 begin
   if FServerVariables[Index].IsEmpty then
   begin
@@ -506,7 +517,7 @@ begin
   Result := FServerVariables[Index];
 end;
 
-function TIISModule.ReadClient(var Buffer; Count: Integer): Integer;
+function TIISModule.ReadClient(var Buffer; const Count: Integer): Integer;
 var
   BytesReaded: DWORD;
 
@@ -516,12 +527,7 @@ begin
   Result := BytesReaded;
 end;
 
-function TIISModule.WriteClient(var Buffer; const Size: DWORD; const MoreChunkToSend: Boolean): DWORD;
-begin
-  Result := IIS.Module.WriteClient(FIISModule, Buffer, Size, MoreChunkToSend);
-end;
-
-procedure TIISModule.SetHeader(Name: String; const Value: String);
+procedure TIISModule.SetHeader(const Name, Value: String);
 begin
   if not Value.IsEmpty then
   begin
@@ -531,12 +537,12 @@ begin
   end;
 end;
 
-procedure TIISModule.SetServerVariable(Index: TServerVariable; const Value: String);
+procedure TIISModule.SetServerVariable(const Index: TServerVariable; const Value: String);
 begin
   FServerVariables[Index] := Value;
 end;
 
-procedure TIISModule.SetStatusCode(StatusCode: Integer; Reason: String);
+procedure TIISModule.SetStatusCode(const StatusCode: Integer; const Reason: String);
 var
   ReasonAnsiString: AnsiString;
 
