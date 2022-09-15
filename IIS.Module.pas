@@ -1,4 +1,4 @@
-unit IIS.Module;
+ï»¿unit IIS.Module;
 
 interface
 
@@ -12,7 +12,6 @@ type
 {$ELSE}
   TIntegerVariable = Integer;
 {$ENDIF}
-
   TRequestNotificationStatus = (RQ_NOTIFICATION_CONTINUE, RQ_NOTIFICATION_PENDING, RQ_NOTIFICATION_FINISH_REQUEST);
   TServerVariable = (ssvMethod, ssvProtocol, ssvURL, ssvQueryString, ssvPathInfo, ssvPathTranslated, ssvHTTPCacheControl, ssvHTTPDate, ssvHTTPAccept, ssvHTTPFrom, ssvHTTPHost,
     ssvHTTPIfModifiedSince, ssvHTTPReferer, ssvHTTPUserAgent, ssvHTTPContentEncoding, ssvContentType, ssvContentLength, ssvHTTPContentVersion, ssvHTTPDerivedFrom, ssvHTTPExpires,
@@ -53,13 +52,13 @@ type
 
   TIISModuleWebResponse = class(TWebResponse)
   private
+    FDateVariables: array [0 .. MAX_DATETIMES - 1] of TDateTime;
     FIISModule: TIISModule;
-    FStatusCode: Integer;
-    FSent: Boolean;
+    FIntegerVariables: array [0 .. MAX_INTEGERS - 1] of TIntegerVariable;
     FLocalContentStream: TStream;
-    FStringVariables: array[0..MAX_STRINGS - 1] of UTF8String;
-    FIntegerVariables: array[0..MAX_INTEGERS - 1] of TIntegerVariable;
-    FDateVariables: array[0..MAX_DATETIMES - 1] of TDateTime;
+    FSent: Boolean;
+    FStatusCode: Integer;
+    FStringVariables: array [0 .. MAX_STRINGS - 1] of UTF8String;
   protected
     function GetContent: String; override;
     function GetDateVariable(Index: Integer): TDateTime; override;
@@ -86,8 +85,8 @@ type
 
   TIISModuleWebRequest = class(TWebRequest)
   private
-    FIISModule: TIISModule;
     FContent: TBytes;
+    FIISModule: TIISModule;
 
     procedure LoadContent;
   protected
@@ -111,8 +110,7 @@ type
 
 function RegisterModule(dwServerVersion: DWORD; pModuleInfo, pGlobalInfo: Pointer): HRESULT; stdcall;
 
-exports
-  RegisterModule;
+exports RegisterModule;
 
 implementation
 
@@ -404,7 +402,7 @@ end;
 
 function TIISModuleWebRequest.WriteString(const AString: String): Boolean;
 begin
-  raise Exception.Create('Não implementado!');
+  raise Exception.Create('NÃ£o implementado!');
 end;
 
 { TIISModuleApplication }
@@ -470,7 +468,7 @@ const
 
 begin
   if Size > MAX_CHUNCK_BUFFER_SIZE then
-    raise Exception.Create('Você não pode adicionar um buffer maior que 65535 bytes');
+    raise Exception.Create('VocÃª nÃ£o pode adicionar um buffer maior que 65535 bytes');
 
   IIS.Module.AppendEntityChunk(FIISModule, Buffer, Size);
 end;
@@ -505,13 +503,8 @@ begin
   begin
     var ReturnValue := IIS.Module.GetServerVariable(FIISModule, Index);
 
-    if Index in [ssvContentLength, ssvContentType, ssvHTTPCookie, ssvMethod] then
-      FServerVariables[Index] := String(PAnsiChar(ReturnValue))
-    else
+    if Assigned(ReturnValue) then
       FServerVariables[Index] := String(PChar(ReturnValue));
-
-    if Index = ssvQueryString then
-      FServerVariables[Index] := FServerVariables[Index].Substring(1);
   end;
 
   Result := FServerVariables[Index];
