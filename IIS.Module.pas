@@ -228,7 +228,7 @@ procedure TIISModuleWebResponse.SendStream(AStream: TStream);
 var
   ReadSize: Integer;
 
-  Buffer: array[0..4095] of Byte;
+  Buffer: array[0..65000] of Byte;
 
 begin
   var BufferSize := Length(Buffer);
