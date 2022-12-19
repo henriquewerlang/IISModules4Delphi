@@ -55,7 +55,7 @@ type
     FDateVariables: array [0 .. MAX_DATETIMES - 1] of TDateTime;
     FIISModule: TIISModule;
     FIntegerVariables: array [0 .. MAX_INTEGERS - 1] of TIntegerVariable;
-    FLocalContentStream: TStream;
+    FLocalContentStream: TBytesStream;
     FSent: Boolean;
     FStatusCode: Integer;
     FStringVariables: array [0 .. MAX_STRINGS - 1] of UTF8String;
@@ -153,7 +153,10 @@ end;
 
 function TIISModuleWebResponse.GetContent: String;
 begin
-
+  if Assigned(FLocalContentStream) then
+    Result := DefaultCharSetEncoding.GetString(FLocalContentStream.Bytes)
+  else
+    Result := EmptyStr;
 end;
 
 function TIISModuleWebResponse.GetDateVariable(Index: Integer): TDateTime;
@@ -226,12 +229,12 @@ end;
 
 procedure TIISModuleWebResponse.SendStream(AStream: TStream);
 var
-  ReadSize: Integer;
+  ReadSize: Cardinal;
 
   Buffer: array[0..65000] of Byte;
 
 begin
-  var BufferSize := Length(Buffer);
+  var BufferSize: Cardinal := Length(Buffer);
 
   repeat
     ReadSize := AStream.Read(Buffer, BufferSize);
@@ -249,7 +252,7 @@ end;
 procedure TIISModuleWebResponse.SetContent(const Value: String);
 begin
   if not Assigned(FLocalContentStream) then
-    FLocalContentStream := TMemoryStream.Create;
+    FLocalContentStream := TBytesStream.Create;
 
   FLocalContentStream.Size := 0;
 
