@@ -234,6 +234,8 @@ var
   Buffer: array[0..65000] of Byte;
 
 begin
+  AStream.Seek(0, TSeekOrigin.soBeginning);
+
   var BufferSize: Cardinal := Length(Buffer);
 
   repeat
