@@ -353,15 +353,18 @@ var
   TotalToRead: Int64;
 
 begin
-  TotalToRead := 0;
+  if ContentLength > 0 then
+  begin
+    TotalToRead := 0;
 
-  SetLength(FContent, ContentLength);
+    SetLength(FContent, ContentLength);
 
-  repeat
-    var TotalReaded := ReadClient(FContent[TotalToRead], Length(FContent) - TotalToRead);
+    repeat
+      var TotalReaded := ReadClient(FContent[TotalToRead], Length(FContent) - TotalToRead);
 
-    TotalToRead := TotalToRead + TotalReaded;
-  until TotalToRead = Length(FContent);
+      TotalToRead := TotalToRead + TotalReaded;
+    until TotalToRead = Length(FContent);
+  end;
 end;
 
 function TIISModuleWebRequest.ReadClient(var Buffer; Count: Integer): Integer;
