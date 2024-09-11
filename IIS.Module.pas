@@ -119,15 +119,15 @@ uses System.Math, Winapi.WinInet;
 var
   WebApplication: TIISModuleApplication;
 
-function GetServerVariable(IISModule: Pointer; Variable: TServerVariable): Pointer; stdcall; external 'IIS.Module.dll';
-function ReadContent(IISModule: Pointer; var Buffer; const BufferSize: DWORD; var BytesReaded: DWORD): HRESULT; safecall; stdcall; external 'IIS.Module.dll';
-function ReadHeader(Module: Pointer; HeaderName: LPCSTR; var ValueSize: USHORT): LPCSTR; stdcall; external 'IIS.Module.dll';
-function RegisterModuleImplementation(pModuleInfo: Pointer; Callback: Pointer): HRESULT; stdcall; external 'IIS.Module.dll';
+function GetServerVariable(IISModule: Pointer; Variable: TServerVariable): Pointer; stdcall; external 'IIS.Module.dll' delayed;
+function ReadContent(IISModule: Pointer; var Buffer; const BufferSize: DWORD; var BytesReaded: DWORD): HRESULT; safecall; stdcall; external 'IIS.Module.dll' delayed;
+function ReadHeader(Module: Pointer; HeaderName: LPCSTR; var ValueSize: USHORT): LPCSTR; stdcall; external 'IIS.Module.dll' delayed;
+function RegisterModuleImplementation(pModuleInfo: Pointer; Callback: Pointer): HRESULT; stdcall; external 'IIS.Module.dll' delayed;
 
-procedure AppendEntityChunk(Module: Pointer; var Buffer; Size: DWORD); stdcall; external 'IIS.Module.dll';
-procedure Flush(Module: Pointer); stdcall; external 'IIS.Module.dll';
-procedure SetStatusCode(Module: Pointer; StatusCode: USHORT; Reason: PUTF8Char); stdcall; external 'IIS.Module.dll';
-procedure WriteHeader(Module: Pointer; HeaderName, Value: LPCSTR; ValueSize: USHORT); stdcall; external 'IIS.Module.dll';
+procedure AppendEntityChunk(Module: Pointer; var Buffer; Size: DWORD); stdcall; external 'IIS.Module.dll' delayed;
+procedure Flush(Module: Pointer); stdcall; external 'IIS.Module.dll' delayed;
+procedure SetStatusCode(Module: Pointer; StatusCode: USHORT; Reason: PUTF8Char); stdcall; external 'IIS.Module.dll' delayed;
+procedure WriteHeader(Module: Pointer; HeaderName, Value: LPCSTR; ValueSize: USHORT); stdcall; external 'IIS.Module.dll' delayed;
 
 function Callback(IISModule: Pointer): TRequestNotificationStatus; stdcall;
 begin
